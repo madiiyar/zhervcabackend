@@ -1,0 +1,6 @@
+@vc_HostAddress = http://localhost:5089
+
+GET {{vc_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
