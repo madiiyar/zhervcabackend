@@ -82,4 +82,9 @@ namespace vc.DTOs
         public List<string> SalesModels { get; set; }
         public List<string> TargetCountries { get; set; }
     }
+
+    public class UpdateStartupStatusDto
+    {
+        public string Status { get; set; } = null!; // "Accepted" or "Rejected"
+    }
 }

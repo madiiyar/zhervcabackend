@@ -16,7 +16,7 @@ public class InvestorController : ControllerBase
         _context = context;
     }
 
-    // ✅ Public: Get list of investors (basic info)
+    //  Public: Get list of investors (basic info)
     [HttpGet]
     public async Task<ActionResult<IEnumerable<InvestorListDto>>> GetInvestors()
     {
