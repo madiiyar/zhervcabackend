@@ -71,6 +71,67 @@ public class InvestorController : ControllerBase
         };
     }
 
+    [HttpPost]
+    public async Task<IActionResult> CreateInvestor([FromForm] InvestorAnketaDto dto)
+    {
+        // For now, hardcode user ID for testing (or pull from JWT later)
+        var userId = 3;
+
+        var investor = new Investor
+        {
+            Userid = userId,
+            Investortype = "Angel", // or from UI if you plan to support 'Fund'
+            Fullname = dto.FullName,
+            Contactfullname = dto.ContactFullName,
+            Publicemail = dto.PublicEmail,
+            Phonenumber = dto.PhoneNumber,
+            Countryid = dto.CountryId,
+            Website = dto.Website,
+            Organizationname = dto.OrganizationName,
+            Identificationnumber = dto.IdentificationNumber,
+            Description = dto.Description,
+            Investmentamount = dto.InvestmentAmount,
+            Hasstartuppilotexperience = dto.HasStartupPilotExperience,
+            Investsinstartups = dto.InvestsInStartups,
+            Sourceinfoid = dto.SourceInfoId,
+            Createdat = DateTime.Now,
+            Updatedat = DateTime.Now
+        };
+
+        // ✅ Handle profile photo upload
+        if (dto.ProfilePhoto != null)
+        {
+            var uploadsDir = Path.Combine("wwwroot", "uploads");
+            if (!Directory.Exists(uploadsDir))
+                Directory.CreateDirectory(uploadsDir);
+
+            var uniqueFileName = Guid.NewGuid().ToString() + Path.GetExtension(dto.ProfilePhoto.FileName);
+            var filePath = Path.Combine(uploadsDir, uniqueFileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await dto.ProfilePhoto.CopyToAsync(stream);
+            }
+
+            investor.Profilephotopath = "/uploads/" + uniqueFileName;
+        }
+
+        // Save the base investor row
+        _context.Investors.Add(investor);
+        await _context.SaveChangesAsync();
+
+        // ✅ Many-to-many relations (after investor.Id is generated)
+        investor.Industries = await _context.Industries.Where(i => dto.IndustryIds.Contains(i.Id)).ToListAsync();
+        investor.Technologies = await _context.Technologies.Where(t => dto.TechnologyIds.Contains(t.Id)).ToListAsync();
+        investor.Innovationmethods = await _context.Innovationmethods.Where(m => dto.InnovationMethodIds.Contains(m.Id)).ToListAsync();
+        investor.Developmentstages = await _context.Developmentstages.Where(d => dto.DevelopmentStageIds.Contains(d.Id)).ToListAsync();
+
+        await _context.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(GetInvestorDetails), new { publicName = investor.Organizationname }, "Investor profile created.");
+    }
+
+
     // ✅ Authenticated: Investor updates their profile
     [Authorize(Roles = "Investor")]
     [HttpPut]
