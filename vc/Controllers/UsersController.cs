@@ -18,9 +18,20 @@ namespace vc.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterUserDto dto)
         {
-            await _service.RegisterAsync(dto);
-            return Ok("OTP sent to your email.");
+            try
+            {
+                await _service.RegisterAsync(dto);
+                return Ok("OTP sent to your email.");
+            }
+            catch (Exception ex)
+            {
+                if (ex.Message.Contains("Email already registered"))
+                    return BadRequest("This email is already in use.");
+
+                return StatusCode(500, "An error occurred during registration.");
+            }
         }
+
 
         [HttpPost("verify-otp")]
         public async Task<IActionResult> VerifyOtp(OtpVerifyDto dto)

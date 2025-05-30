@@ -2,6 +2,7 @@
 using vc.DTOs;
 using vc.Models;
 using Microsoft.EntityFrameworkCore;
+using vc.Services;
 
 namespace vc.Services
 {
@@ -9,11 +10,13 @@ namespace vc.Services
     {
         private readonly VcdbContext _context;
         private readonly JwtTokenGenerator _tokenGenerator;
+        private readonly EmailService _email;
 
-        public UserService(VcdbContext context, JwtTokenGenerator tokenGenerator)
+        public UserService(VcdbContext context, JwtTokenGenerator tokenGenerator, EmailService email)
         {
             _context = context;
             _tokenGenerator = tokenGenerator;
+            _email = email; 
         }
 
         public async Task RegisterAsync(RegisterUserDto dto)
@@ -48,7 +51,8 @@ namespace vc.Services
             _context.Emailotps.Add(otp);
             await _context.SaveChangesAsync();
 
-            // TODO: Send otp.Otpcode via email/SMS
+            //  Send OTP via email
+            await _email.SendOtpEmailAsync(user.Email, otp.Otpcode);
         }
 
         public async Task<string> LoginAsync(LoginDto dto)

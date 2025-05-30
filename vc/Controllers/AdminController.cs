@@ -18,7 +18,7 @@ namespace vc.Controllers
             _context = context;
         }
 
-        // ✅ Get all startups that are pending approval
+        // Get all startups that are pending approval
         [HttpGet("startups/pending")]
         public async Task<ActionResult<IEnumerable<StartupListDto>>> GetPendingStartups()
         {
@@ -36,7 +36,7 @@ namespace vc.Controllers
                 .ToListAsync();
         }
 
-        // ✅ Approve or reject a startup
+        //Approve or reject a startup
         [HttpPut("startups/{id}/status")]
         public async Task<IActionResult> UpdateStartupStatus(int id, [FromBody] UpdateStartupStatusDto dto)
         {
@@ -55,7 +55,7 @@ namespace vc.Controllers
             return Ok($"Startup status updated to '{dto.Status}'.");
         }
 
-        // ✅ Optional: View all users (for auditing)
+        // View all users (for auditing)
         [HttpGet("users")]
         public async Task<IActionResult> GetAllUsers()
         {

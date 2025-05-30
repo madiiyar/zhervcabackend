@@ -6,9 +6,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using vc.Models;
-using vc.DTOs;
+using vc.DTOs.DropdownDtos;
 
-namespace vc.Controllers
+namespace vc.Controllers.Dropdowns
 {
     [Route("api/[controller]")]
     [ApiController]

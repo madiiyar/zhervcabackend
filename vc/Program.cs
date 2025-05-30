@@ -22,6 +22,9 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddScoped<EmailService>();
+
+
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {

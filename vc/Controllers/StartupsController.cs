@@ -16,7 +16,7 @@ namespace vc.Controllers
             _context = context;
         }
 
-        // ✅ GET: Summary list
+        //GET: Summary list
         [HttpGet]
         public async Task<ActionResult<IEnumerable<StartupListDto>>> GetStartups()
         {

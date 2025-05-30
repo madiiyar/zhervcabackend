@@ -1,6 +1,6 @@
-﻿namespace vc.DTOs
+﻿namespace vc.DTOs.DropdownDtos
 {
-    public class IndustryDto
+    public class SourceInfoDto
     {
         public int Id { get; set; }
         public string Name { get; set; } = null!;
