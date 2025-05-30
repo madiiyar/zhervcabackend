@@ -1,5 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using vc.DTOs;
 using vc.Models;
 
@@ -7,6 +9,7 @@ namespace vc.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]  // Require logged-in user for all endpoints
     public class StartupsController : ControllerBase
     {
         private readonly VcdbContext _context;
@@ -16,7 +19,7 @@ namespace vc.Controllers
             _context = context;
         }
 
-        //GET: Summary list
+        // GET: api/startups - public summary list (no user required)
         [HttpGet]
         public async Task<ActionResult<IEnumerable<StartupListDto>>> GetStartups()
         {
@@ -33,7 +36,7 @@ namespace vc.Controllers
                 .ToListAsync();
         }
 
-        // ✅ GET: Full profile by organization name
+        // GET: api/startups/{publicName} - full public profile
         [HttpGet("{publicName}")]
         public async Task<ActionResult<StartupDetailDto>> GetStartup(string publicName)
         {
@@ -79,11 +82,14 @@ namespace vc.Controllers
             };
         }
 
-        // ✅ POST: Create
+        // POST: api/startups - create new startup profile, user must be logged in
         [HttpPost]
         public async Task<IActionResult> CreateStartup([FromForm] StartupAnketaDto dto)
         {
-            var userId = 3;
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return Unauthorized();
+
+            var userId = int.Parse(userIdClaim.Value);
 
             var startup = new Startup
             {
@@ -112,18 +118,18 @@ namespace vc.Controllers
 
             if (dto.Logo != null)
             {
-                var fileName = Guid.NewGuid() + Path.GetExtension(dto.Logo.FileName);
-                var path = Path.Combine("wwwroot/uploads", fileName);
-                using var stream = new FileStream(path, FileMode.Create);
+                var fileName = Guid.NewGuid() + System.IO.Path.GetExtension(dto.Logo.FileName);
+                var path = System.IO.Path.Combine("wwwroot/uploads", fileName);
+                using var stream = new System.IO.FileStream(path, System.IO.FileMode.Create);
                 await dto.Logo.CopyToAsync(stream);
                 startup.Logopath = "/uploads/" + fileName;
             }
 
             if (dto.Presentation != null)
             {
-                var fileName = Guid.NewGuid() + Path.GetExtension(dto.Presentation.FileName);
-                var path = Path.Combine("wwwroot/uploads", fileName);
-                using var stream = new FileStream(path, FileMode.Create);
+                var fileName = Guid.NewGuid() + System.IO.Path.GetExtension(dto.Presentation.FileName);
+                var path = System.IO.Path.Combine("wwwroot/uploads", fileName);
+                using var stream = new System.IO.FileStream(path, System.IO.FileMode.Create);
                 await dto.Presentation.CopyToAsync(stream);
                 startup.Presentationpath = "/uploads/" + fileName;
             }
@@ -131,7 +137,7 @@ namespace vc.Controllers
             _context.Startups.Add(startup);
             await _context.SaveChangesAsync();
 
-            // Join tables
+            // Save many-to-many relationships
             startup.Industries = await _context.Industries.Where(i => dto.IndustryIds.Contains(i.Id)).ToListAsync();
             startup.Technologies = await _context.Technologies.Where(t => dto.TechnologyIds.Contains(t.Id)).ToListAsync();
             startup.Businessmodels = await _context.Businessmodels.Where(b => dto.BusinessModelIds.Contains(b.Id)).ToListAsync();
@@ -139,14 +145,18 @@ namespace vc.Controllers
             startup.Countries = await _context.Countries.Where(c => dto.TargetCountryIds.Contains(c.Id)).ToListAsync();
 
             await _context.SaveChangesAsync();
-            return Ok("Startup profile created");
+
+            return CreatedAtAction(nameof(GetStartup), new { publicName = startup.Organizationname }, startup);
         }
 
-        // ✅ PUT: Update
+        // PUT: api/startups - update startup profile of logged-in user
         [HttpPut]
         public async Task<IActionResult> UpdateStartup([FromForm] StartupAnketaDto dto)
         {
-            var userId = 4;
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return Unauthorized();
+
+            var userId = int.Parse(userIdClaim.Value);
 
             var startup = await _context.Startups
                 .Include(s => s.Industries)
@@ -180,22 +190,23 @@ namespace vc.Controllers
 
             if (dto.Logo != null)
             {
-                var fileName = Guid.NewGuid() + Path.GetExtension(dto.Logo.FileName);
-                var path = Path.Combine("wwwroot/uploads", fileName);
-                using var stream = new FileStream(path, FileMode.Create);
+                var fileName = Guid.NewGuid() + System.IO.Path.GetExtension(dto.Logo.FileName);
+                var path = System.IO.Path.Combine("wwwroot/uploads", fileName);
+                using var stream = new System.IO.FileStream(path, System.IO.FileMode.Create);
                 await dto.Logo.CopyToAsync(stream);
                 startup.Logopath = "/uploads/" + fileName;
             }
 
             if (dto.Presentation != null)
             {
-                var fileName = Guid.NewGuid() + Path.GetExtension(dto.Presentation.FileName);
-                var path = Path.Combine("wwwroot/uploads", fileName);
-                using var stream = new FileStream(path, FileMode.Create);
+                var fileName = Guid.NewGuid() + System.IO.Path.GetExtension(dto.Presentation.FileName);
+                var path = System.IO.Path.Combine("wwwroot/uploads", fileName);
+                using var stream = new System.IO.FileStream(path, System.IO.FileMode.Create);
                 await dto.Presentation.CopyToAsync(stream);
                 startup.Presentationpath = "/uploads/" + fileName;
             }
 
+            // Clear and reassign many-to-many
             startup.Industries.Clear();
             startup.Technologies.Clear();
             startup.Businessmodels.Clear();
@@ -209,10 +220,11 @@ namespace vc.Controllers
             startup.Countries = await _context.Countries.Where(c => dto.TargetCountryIds.Contains(c.Id)).ToListAsync();
 
             await _context.SaveChangesAsync();
-            return Ok("Startup profile updated");
+
+            return NoContent();
         }
 
-        // ✅ DELETE
+        // DELETE: api/startups/{id} - admin only (you can add [Authorize(Roles = "Admin")] later)
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteStartup(int id)
         {

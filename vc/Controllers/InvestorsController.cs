@@ -71,16 +71,19 @@ public class InvestorController : ControllerBase
         };
     }
 
+    // Create investor profile - authenticated user only
     [HttpPost]
     public async Task<IActionResult> CreateInvestor([FromForm] InvestorAnketaDto dto)
     {
-        // For now, hardcode user ID for testing (or pull from JWT later)
-        var userId = 3;
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null) return Unauthorized("User ID claim missing");
+
+        var userId = int.Parse(userIdClaim.Value);
 
         var investor = new Investor
         {
             Userid = userId,
-            Investortype = "Angel", // or from UI if you plan to support 'Fund'
+            Investortype = "Angel", // or use dto if dynamic
             Fullname = dto.FullName,
             Contactfullname = dto.ContactFullName,
             Publicemail = dto.PublicEmail,
@@ -98,14 +101,12 @@ public class InvestorController : ControllerBase
             Updatedat = DateTime.Now
         };
 
-        // ✅ Handle profile photo upload
         if (dto.ProfilePhoto != null)
         {
             var uploadsDir = Path.Combine("wwwroot", "uploads");
-            if (!Directory.Exists(uploadsDir))
-                Directory.CreateDirectory(uploadsDir);
+            if (!Directory.Exists(uploadsDir)) Directory.CreateDirectory(uploadsDir);
 
-            var uniqueFileName = Guid.NewGuid().ToString() + Path.GetExtension(dto.ProfilePhoto.FileName);
+            var uniqueFileName = Guid.NewGuid() + Path.GetExtension(dto.ProfilePhoto.FileName);
             var filePath = Path.Combine(uploadsDir, uniqueFileName);
 
             using (var stream = new FileStream(filePath, FileMode.Create))
@@ -116,11 +117,9 @@ public class InvestorController : ControllerBase
             investor.Profilephotopath = "/uploads/" + uniqueFileName;
         }
 
-        // Save the base investor row
         _context.Investors.Add(investor);
         await _context.SaveChangesAsync();
 
-        // ✅ Many-to-many relations (after investor.Id is generated)
         investor.Industries = await _context.Industries.Where(i => dto.IndustryIds.Contains(i.Id)).ToListAsync();
         investor.Technologies = await _context.Technologies.Where(t => dto.TechnologyIds.Contains(t.Id)).ToListAsync();
         investor.Innovationmethods = await _context.Innovationmethods.Where(m => dto.InnovationMethodIds.Contains(m.Id)).ToListAsync();
@@ -131,13 +130,14 @@ public class InvestorController : ControllerBase
         return CreatedAtAction(nameof(GetInvestorDetails), new { publicName = investor.Organizationname }, "Investor profile created.");
     }
 
-
-    // ✅ Authenticated: Investor updates their profile
-    [Authorize(Roles = "Investor")]
+    // Update investor profile - authenticated only
     [HttpPut]
     public async Task<IActionResult> UpdateInvestor([FromForm] InvestorAnketaDto dto)
     {
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null) return Unauthorized("User ID claim missing");
+
+        var userId = int.Parse(userIdClaim.Value);
 
         var investor = await _context.Investors
             .Include(i => i.Industries)
@@ -148,15 +148,16 @@ public class InvestorController : ControllerBase
 
         if (investor == null) return NotFound();
 
-        // Update fields...
         investor.Contactfullname = dto.ContactFullName;
         investor.Publicemail = dto.PublicEmail;
-        // ... and so on
+        // Map other fields similarly...
         investor.Updatedat = DateTime.UtcNow;
 
-        // Clear old and update many-to-many
+        // Clear and re-add many-to-many
         investor.Industries.Clear();
         investor.Industries = await _context.Industries.Where(i => dto.IndustryIds.Contains(i.Id)).ToListAsync();
+
+        // Repeat for Technologies, Innovationmethods, Developmentstages...
 
         await _context.SaveChangesAsync();
         return Ok("Profile updated");
