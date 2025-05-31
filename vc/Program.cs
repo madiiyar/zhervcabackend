@@ -38,7 +38,9 @@ builder.Services.AddAuthentication("Bearer")
             ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)
-            )
+            ),
+            RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role",
+            NameClaimType = "id"
         };
     });
 
@@ -87,6 +89,9 @@ var app = builder.Build();
 // Always enable Swagger
 app.UseSwagger();
 app.UseSwaggerUI();
+
+app.UseStaticFiles();
+
 
 // Enable CORS middleware before Authorization
 app.UseCors("AllowAll");

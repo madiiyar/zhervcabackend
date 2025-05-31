@@ -19,7 +19,29 @@ namespace vc.Controllers
             _context = context;
         }
 
+        // Helper property to get the user ID from the "id" claim
+        private int? UserId
+        {
+            get
+            {
+                var claim = User.FindFirst("id");
+                if (claim == null) return null;
+                if (int.TryParse(claim.Value, out var id)) return id;
+                return null;
+            }
+        }
+
+        [HttpGet("testauth")]
+        [Authorize(Roles = "Startup")]
+        public IActionResult TestAuth()
+        {
+            var userId = UserId;
+            var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value);
+            return Ok(new { userId, roles });
+        }
+
         // GET: api/startups - public summary list (no user required)
+        [AllowAnonymous]
         [HttpGet]
         public async Task<ActionResult<IEnumerable<StartupListDto>>> GetStartups()
         {
@@ -37,6 +59,7 @@ namespace vc.Controllers
         }
 
         // GET: api/startups/{publicName} - full public profile
+        [AllowAnonymous]
         [HttpGet("{publicName}")]
         public async Task<ActionResult<StartupDetailDto>> GetStartup(string publicName)
         {
@@ -83,17 +106,16 @@ namespace vc.Controllers
         }
 
         // POST: api/startups - create new startup profile, user must be logged in
+        [Authorize(Roles = "Startup")]
         [HttpPost]
         public async Task<IActionResult> CreateStartup([FromForm] StartupAnketaDto dto)
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null) return Unauthorized();
-
-            var userId = int.Parse(userIdClaim.Value);
+            var userId = UserId;
+            if (userId == null) return Unauthorized();
 
             var startup = new Startup
             {
-                Userid = userId,
+                Userid = userId.Value,
                 Publicname = dto.PublicName,
                 Contactfullname = dto.ContactFullName,
                 Publicemail = dto.PublicEmail,
@@ -137,7 +159,7 @@ namespace vc.Controllers
             _context.Startups.Add(startup);
             await _context.SaveChangesAsync();
 
-            // Save many-to-many relationships
+            // Assign many-to-many relationships
             startup.Industries = await _context.Industries.Where(i => dto.IndustryIds.Contains(i.Id)).ToListAsync();
             startup.Technologies = await _context.Technologies.Where(t => dto.TechnologyIds.Contains(t.Id)).ToListAsync();
             startup.Businessmodels = await _context.Businessmodels.Where(b => dto.BusinessModelIds.Contains(b.Id)).ToListAsync();
@@ -146,17 +168,59 @@ namespace vc.Controllers
 
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetStartup), new { publicName = startup.Organizationname }, startup);
+            // Fetch full entity with navigation for response
+            var createdStartup = await _context.Startups
+                .Include(s => s.Country)
+                .Include(s => s.Developmentstage)
+                .Include(s => s.Investmentstage)
+                .Include(s => s.Industries)
+                .Include(s => s.Technologies)
+                .Include(s => s.Businessmodels)
+                .Include(s => s.Salesmodels)
+                .Include(s => s.Countries)
+                .FirstOrDefaultAsync(s => s.Id == startup.Id);
+
+            if (createdStartup == null) return NotFound();
+
+            var dtoResult = new StartupDetailDto
+            {
+                PublicName = createdStartup.Publicname,
+                ContactFullName = createdStartup.Contactfullname,
+                PublicEmail = createdStartup.Publicemail,
+                PhoneNumber = createdStartup.Phonenumber,
+                Website = createdStartup.Website,
+                OrganizationName = createdStartup.Organizationname,
+                IdentificationNumber = createdStartup.Identificationnumber,
+                FoundingYear = createdStartup.Foundingyear ?? 0,
+                CountryName = createdStartup.Country?.Name,
+                EmployeeCount = createdStartup.Employeecount ?? 0,
+                Description = createdStartup.Description,
+                DevelopmentStage = createdStartup.Developmentstage?.Name,
+                InvestmentStage = createdStartup.Investmentstage?.Name,
+                HasSales = createdStartup.Hassales ?? false,
+                ActivelyLookingForInvestment = createdStartup.Activelylookingforinvestment ?? false,
+                TotalPreviousInvestment = createdStartup.Totalpreviousinvestment ?? 0,
+                InvestorList = createdStartup.Investorlist,
+                LogoPath = createdStartup.Logopath,
+                PresentationPath = createdStartup.Presentationpath,
+                Industries = createdStartup.Industries.Select(i => i.Name).ToList(),
+                Technologies = createdStartup.Technologies.Select(t => t.Name).ToList(),
+                BusinessModels = createdStartup.Businessmodels.Select(b => b.Name).ToList(),
+                SalesModels = createdStartup.Salesmodels.Select(sm => sm.Name).ToList(),
+                TargetCountries = createdStartup.Countries.Select(c => c.Name).ToList()
+            };
+
+            return CreatedAtAction(nameof(GetStartup), new { publicName = dtoResult.PublicName }, dtoResult);
         }
 
+
         // PUT: api/startups - update startup profile of logged-in user
+        [Authorize(Roles = "Startup")]
         [HttpPut]
         public async Task<IActionResult> UpdateStartup([FromForm] StartupAnketaDto dto)
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null) return Unauthorized();
-
-            var userId = int.Parse(userIdClaim.Value);
+            var userId = UserId;
+            if (userId == null) return Unauthorized();
 
             var startup = await _context.Startups
                 .Include(s => s.Industries)
@@ -164,7 +228,7 @@ namespace vc.Controllers
                 .Include(s => s.Businessmodels)
                 .Include(s => s.Salesmodels)
                 .Include(s => s.Countries)
-                .FirstOrDefaultAsync(s => s.Userid == userId);
+                .FirstOrDefaultAsync(s => s.Userid == userId.Value);
 
             if (startup == null) return NotFound();
 
@@ -225,6 +289,7 @@ namespace vc.Controllers
         }
 
         // DELETE: api/startups/{id} - admin only (you can add [Authorize(Roles = "Admin")] later)
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteStartup(int id)
         {

@@ -17,6 +17,7 @@ public class InvestorController : ControllerBase
     }
 
     //  Public: Get list of investors (basic info)
+    [AllowAnonymous]
     [HttpGet]
     public async Task<ActionResult<IEnumerable<InvestorListDto>>> GetInvestors()
     {
@@ -25,6 +26,7 @@ public class InvestorController : ControllerBase
             .Select(i => new InvestorListDto
             {
                 FullName = i.Fullname,
+                OrganizationName = i.Organizationname,
                 InvestorType = i.Investortype,
                 PublicEmail = i.Publicemail,
                 CountryName = i.Country.Name,
@@ -33,7 +35,8 @@ public class InvestorController : ControllerBase
             .ToListAsync();
     }
 
-    // ✅ Public: Get detailed investor profile by name (e.g., /api/investor/beelinefund)
+    // Public: Get detailed investor profile by name (e.g., /api/investor/beelinefund)
+    [AllowAnonymous]
     [HttpGet("{publicName}")]
     public async Task<ActionResult<InvestorDetailDto>> GetInvestorDetails(string publicName)
     {
@@ -72,10 +75,11 @@ public class InvestorController : ControllerBase
     }
 
     // Create investor profile - authenticated user only
+    [Authorize(Roles = "Investor")]
     [HttpPost]
     public async Task<IActionResult> CreateInvestor([FromForm] InvestorAnketaDto dto)
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        var userIdClaim = User.FindFirst("id");
         if (userIdClaim == null) return Unauthorized("User ID claim missing");
 
         var userId = int.Parse(userIdClaim.Value);
@@ -83,7 +87,7 @@ public class InvestorController : ControllerBase
         var investor = new Investor
         {
             Userid = userId,
-            Investortype = "Angel", // or use dto if dynamic
+            Investortype = dto.InvestorType,
             Fullname = dto.FullName,
             Contactfullname = dto.ContactFullName,
             Publicemail = dto.PublicEmail,
@@ -131,6 +135,7 @@ public class InvestorController : ControllerBase
     }
 
     // Update investor profile - authenticated only
+    [Authorize(Roles = "Investor")]
     [HttpPut]
     public async Task<IActionResult> UpdateInvestor([FromForm] InvestorAnketaDto dto)
     {
@@ -163,7 +168,7 @@ public class InvestorController : ControllerBase
         return Ok("Profile updated");
     }
 
-    // ✅ Admin: Delete investor
+    // Admin: Delete investor
     [Authorize(Roles = "Admin")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteInvestor(int id)

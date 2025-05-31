@@ -82,7 +82,7 @@ namespace vc.Controllers
             return Ok("Offer sent successfully.");
         }
 
-        // ✅ Get sent offers
+        //Get sent offers
         [HttpGet("sent")]
         public async Task<ActionResult<IEnumerable<OfferResponseDto>>> GetSentOffers()
         {
@@ -147,7 +147,7 @@ namespace vc.Controllers
             return Unauthorized();
         }
 
-        // ✅ Get received offers
+        //Get received offers
         [HttpGet("received")]
         public async Task<ActionResult<IEnumerable<OfferResponseDto>>> GetReceivedOffers()
         {
@@ -212,7 +212,7 @@ namespace vc.Controllers
             return Unauthorized();
         }
 
-        // ✅ Update offer status
+        //Update offer status
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateOffer(int id, [FromBody] UpdateOfferStatusDto dto)
         {

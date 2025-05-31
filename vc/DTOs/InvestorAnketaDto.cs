@@ -6,6 +6,7 @@ namespace vc.DTOs
     public class InvestorListDto
     {
         public string FullName { get; set; }
+        public string OrganizationName { get; set; }
         public string InvestorType { get; set; }
         public string PublicEmail { get; set; }
         public string CountryName { get; set; }
@@ -56,6 +57,8 @@ namespace vc.DTOs
             public string Website { get; set; }
 
             public string OrganizationName { get; set; }
+            public string InvestorType { get; set; }
+
 
             public string IdentificationNumber { get; set; }
 
