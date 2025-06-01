@@ -46,5 +46,34 @@ namespace vc.Controllers
             var token = await _service.LoginAsync(dto);
             return Ok(new { Token = token });
         }
+
+        [HttpPost("request-password-reset")]
+        public async Task<IActionResult> RequestPasswordReset([FromBody] string email)
+        {
+            try
+            {
+                await _service.RequestPasswordResetAsync(email);
+                return Ok("Password reset OTP sent to your email.");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
+        {
+            try
+            {
+                await _service.ResetPasswordAsync(dto);
+                return Ok("Password has been reset successfully.");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
     }
 }

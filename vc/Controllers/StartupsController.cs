@@ -35,22 +35,82 @@ namespace vc.Controllers
         // ✅ GET: Summary list
         [AllowAnonymous]
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<StartupListDto>>> GetStartups()
+        public async Task<ActionResult<IEnumerable<StartupListDto>>> GetStartups(
+                [FromQuery] List<int>? industryIds,
+                [FromQuery] List<int>? technologyIds,
+                [FromQuery] List<int>? businessModelIds,
+                [FromQuery] List<int>? developmentStageIds,
+                [FromQuery] List<int>? investmentStageIds,
+                [FromQuery] List<int>? foundingYears,
+                [FromQuery] int? minEmployees,
+                [FromQuery] int? maxEmployees)
         {
-            return await _context.Startups
+            var query = _context.Startups
                 .Include(s => s.Country)
                 .Include(s => s.Developmentstage)
-                .Select(s => new StartupListDto
+                .Include(s => s.Investmentstage)
+                .Include(s => s.Businessmodels)
+                .Include(s => s.Industries)
+                .Include(s => s.Technologies)
+                .AsQueryable();
+
+            // Apply filters only if parameters are provided, otherwise skip
+
+            if (industryIds != null && industryIds.Any())
+            {
+                foreach (var id in industryIds)
                 {
-                    Id = s.Id,
-                    PublicName = s.Publicname,
-                    OrganizationName = s.Organizationname,
-                    CountryName = s.Country.Name,
-                    DevelopmentStage = s.Developmentstage.Name,
-                    LogoPath = s.Logopath
-                })
-                .ToListAsync();
+                    query = query.Where(s => s.Industries.Any(i => i.Id == id));
+                }
+            }
+
+            if (technologyIds != null && technologyIds.Any())
+            {
+                foreach (var id in technologyIds)
+                {
+                    query = query.Where(s => s.Technologies.Any(t => t.Id == id));
+                }
+            }
+
+            if (businessModelIds != null && businessModelIds.Any())
+            {
+                query = query.Where(s => s.Businessmodels.Any(b => businessModelIds.Contains(b.Id)));
+            }
+
+            if (developmentStageIds != null && developmentStageIds.Any())
+            {
+                query = query.Where(s => developmentStageIds.Contains(s.Developmentstageid ?? 0));
+            }
+
+            if (investmentStageIds != null && investmentStageIds.Any())
+            {
+                query = query.Where(s => investmentStageIds.Contains(s.Investmentstageid ?? 0));
+            }
+
+            if (foundingYears != null && foundingYears.Any())
+            {
+                query = query.Where(s => foundingYears.Contains(s.Foundingyear ?? 0));
+            }
+
+            if (minEmployees.HasValue)
+                query = query.Where(s => (s.Employeecount ?? 0) >= minEmployees.Value);
+
+            if (maxEmployees.HasValue)
+                query = query.Where(s => (s.Employeecount ?? 0) <= maxEmployees.Value);
+
+            var results = await query.Select(s => new StartupListDto
+            {
+                Id = s.Id,
+                PublicName = s.Publicname,
+                OrganizationName = s.Organizationname,
+                CountryName = s.Country.Name,
+                DevelopmentStage = s.Developmentstage.Name,
+                LogoPath = s.Logopath
+            }).ToListAsync();
+
+            return Ok(results);
         }
+
 
         // GET: api/startups - public summary list (no user required)
         [AllowAnonymous]
@@ -253,7 +313,7 @@ namespace vc.Controllers
                 TargetCountries = createdStartup.Countries.Select(c => c.Name).ToList()
             };
 
-            return CreatedAtAction(nameof(GetStartups), new { publicName = dtoResult.PublicName }, dtoResult);
+            return CreatedAtAction(nameof(GetStartup), new { publicName = dtoResult.PublicName }, dtoResult);
         }
 
 

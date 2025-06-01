@@ -97,5 +97,55 @@ namespace vc.Services
             var rand = new Random();
             return rand.Next(100000, 999999).ToString(); // 6-digit OTP
         }
+
+        public async Task RequestPasswordResetAsync(string email)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            if (user == null)
+                throw new Exception("User not found.");
+
+            var otp = new Emailotp
+            {
+                Userid = user.Id,
+                Otpcode = GenerateOtp(),
+                Purpose = "ResetPassword",
+                Expiresat = DateTime.UtcNow.AddMinutes(10),
+                Createdat = DateTime.UtcNow,
+                Isused = false
+            };
+
+            _context.Emailotps.Add(otp);
+            await _context.SaveChangesAsync();
+
+            await _email.SendOtpEmailAsync(user.Email, otp.Otpcode);
+        }
+
+
+        public async Task ResetPasswordAsync(ResetPasswordDto dto)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+            if (user == null)
+                throw new Exception("User not found.");
+
+            var otp = await _context.Emailotps
+                .Where(o => o.Userid == user.Id
+                            && o.Purpose == "ResetPassword"
+                            && (o.Isused == false || o.Isused == null)
+                            && o.Expiresat > DateTime.UtcNow)
+                .OrderByDescending(o => o.Createdat)
+                .FirstOrDefaultAsync();
+
+            if (otp == null || otp.Otpcode != dto.OtpCode)
+                throw new Exception("Invalid or expired OTP.");
+
+            otp.Isused = true;
+            user.Passwordhash = PasswordHasher.Hash(dto.NewPassword);
+            user.Updatedat = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+        }
+
+
+
     }
 }

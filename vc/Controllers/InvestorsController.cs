@@ -31,22 +31,56 @@ public class InvestorController : ControllerBase
     //  Public: Get list of investors (full details  info)
     [AllowAnonymous]
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<InvestorListDto>>> GetInvestors()
+    public async Task<ActionResult<IEnumerable<InvestorListDto>>> GetInvestors(
+    [FromQuery] List<int>? industryIds,
+    [FromQuery] List<int>? technologyIds,
+    [FromQuery] List<string>? investorTypes)  // Only investorType filtering now
     {
-        return await _context.Investors
-                .Include(i => i.Country)
-                .Select(i => new InvestorListDto
-                {
-                    Id = i.Id,
-                    FullName = i.Fullname,
-                    OrganizationName = i.Organizationname,
-                    InvestorType = i.Investortype,
-                    PublicEmail = i.Publicemail,
-                    CountryName = i.Country.Name,
-                    ProfilePhotoPath = i.Profilephotopath
-                })
-                .ToListAsync();
+        var query = _context.Investors
+            .Include(i => i.Country)
+            .Include(i => i.Industries)
+            .Include(i => i.Technologies)
+            .AsQueryable();
+
+        // Many-to-many AND logic: industries
+        if (industryIds != null && industryIds.Any())
+        {
+            foreach (var id in industryIds)
+            {
+                query = query.Where(i => i.Industries.Any(ind => ind.Id == id));
+            }
+        }
+
+        // Many-to-many AND logic: technologies
+        if (technologyIds != null && technologyIds.Any())
+        {
+            foreach (var id in technologyIds)
+            {
+                query = query.Where(i => i.Technologies.Any(tech => tech.Id == id));
+            }
+        }
+
+        // Single-valued OR logic: investor type
+        if (investorTypes != null && investorTypes.Any())
+        {
+            query = query.Where(i => investorTypes.Contains(i.Investortype));
+        }
+
+        var result = await query.Select(i => new InvestorListDto
+        {
+            Id = i.Id,
+            FullName = i.Fullname,
+            OrganizationName = i.Organizationname,
+            InvestorType = i.Investortype,
+            PublicEmail = i.Publicemail,
+            CountryName = i.Country.Name,
+            ProfilePhotoPath = i.Profilephotopath
+        }).ToListAsync();
+
+        return Ok(result);
     }
+
+
 
     // ✅ Public: Get detailed investor profile by name (e.g., /api/investor/beelinefund)
     [AllowAnonymous]
@@ -208,7 +242,7 @@ public class InvestorController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetInvestors), new { publicName = investor.Organizationname }, "Investor profile created.");
+        return CreatedAtAction(nameof(GetInvestorDetails), new { publicName = investor.Organizationname }, "Investor profile created.");
     }
 
     // Update investor profile - authenticated only
