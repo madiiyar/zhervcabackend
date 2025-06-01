@@ -5,10 +5,10 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using vc.DTOs;
+using vc.DTOs.DropdownDtos;
 using vc.Models;
 
-namespace vc.Controllers
+namespace vc.Controllers.Dropdowns
 {
     [Route("api/[controller]")]
     [ApiController]

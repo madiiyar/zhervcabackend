@@ -43,7 +43,9 @@ namespace vc.DTOs
 
     public class StartupListDto
     {
+        public int Id { get; set; }
         public string PublicName { get; set; }
+        public string OrganizationName { get; set; }
         public string CountryName { get; set; }
         public string DevelopmentStage { get; set; }
         public string LogoPath { get; set; }
@@ -52,6 +54,7 @@ namespace vc.DTOs
     public class StartupDetailDto
     {
         // Basic Info
+        public int Id { get; set; }
         public string PublicName { get; set; }
         public string ContactFullName { get; set; }
         public string PublicEmail { get; set; }

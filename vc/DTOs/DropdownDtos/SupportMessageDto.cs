@@ -1,4 +1,4 @@
-﻿namespace vc.DTOs
+﻿namespace vc.DTOs.DropdownDtos
 {
     public class SupportMessageDto
     {

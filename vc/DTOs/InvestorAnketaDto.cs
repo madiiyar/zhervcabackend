@@ -5,6 +5,7 @@ namespace vc.DTOs
     // For list view
     public class InvestorListDto
     {
+        public int Id { get; set; }
         public string FullName { get; set; }
         public string OrganizationName { get; set; }
         public string InvestorType { get; set; }
@@ -16,6 +17,7 @@ namespace vc.DTOs
     // For detailed view
     public class InvestorDetailDto
     {
+        public int Id { get; set; }
         public string FullName { get; set; }
         public string ContactFullName { get; set; }
         public string PublicEmail { get; set; }
@@ -75,9 +77,11 @@ namespace vc.DTOs
 
             // Optional file upload
             public IFormFile? ProfilePhoto { get; set; }
+            public IFormFile? Logo { get; set; }
 
-            // Multi-select dropdowns (IDs from UI)
-            [Required]
+
+        // Multi-select dropdowns (IDs from UI)
+        [Required]
             public List<int> IndustryIds { get; set; } = new();
 
             [Required]

@@ -31,16 +31,8 @@ namespace vc.Controllers
             }
         }
 
-        [HttpGet("testauth")]
-        [Authorize(Roles = "Startup")]
-        public IActionResult TestAuth()
-        {
-            var userId = UserId;
-            var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value);
-            return Ok(new { userId, roles });
-        }
 
-        // GET: api/startups - public summary list (no user required)
+        // ✅ GET: Summary list
         [AllowAnonymous]
         [HttpGet]
         public async Task<ActionResult<IEnumerable<StartupListDto>>> GetStartups()
@@ -50,7 +42,9 @@ namespace vc.Controllers
                 .Include(s => s.Developmentstage)
                 .Select(s => new StartupListDto
                 {
+                    Id = s.Id,
                     PublicName = s.Publicname,
+                    OrganizationName = s.Organizationname,
                     CountryName = s.Country.Name,
                     DevelopmentStage = s.Developmentstage.Name,
                     LogoPath = s.Logopath
@@ -58,7 +52,7 @@ namespace vc.Controllers
                 .ToListAsync();
         }
 
-        // GET: api/startups/{publicName} - full public profile
+        // GET: api/startups - public summary list (no user required)
         [AllowAnonymous]
         [HttpGet("{publicName}")]
         public async Task<ActionResult<StartupDetailDto>> GetStartup(string publicName)
@@ -75,6 +69,55 @@ namespace vc.Controllers
                 .FirstOrDefaultAsync(s => s.Organizationname.ToLower() == publicName.ToLower());
 
             if (startup == null) return NotFound();
+
+            return new StartupDetailDto
+            {
+                Id=startup.Id,
+                PublicName = startup.Publicname,
+                ContactFullName = startup.Contactfullname,
+                PublicEmail = startup.Publicemail,
+                PhoneNumber = startup.Phonenumber,
+                Website = startup.Website,
+                OrganizationName = startup.Organizationname,
+                IdentificationNumber = startup.Identificationnumber,
+                FoundingYear = startup.Foundingyear ?? 0,
+                CountryName = startup.Country?.Name,
+                EmployeeCount = startup.Employeecount ?? 0,
+                Description = startup.Description,
+                DevelopmentStage = startup.Developmentstage?.Name,
+                InvestmentStage = startup.Investmentstage?.Name,
+                HasSales = startup.Hassales ?? false,
+                ActivelyLookingForInvestment = startup.Activelylookingforinvestment ?? false,
+                TotalPreviousInvestment = startup.Totalpreviousinvestment ?? 0,
+                InvestorList = startup.Investorlist,
+                LogoPath = startup.Logopath,
+                PresentationPath = startup.Presentationpath,
+                Industries = startup.Industries.Select(i => i.Name).ToList(),
+                Technologies = startup.Technologies.Select(t => t.Name).ToList(),
+                BusinessModels = startup.Businessmodels.Select(b => b.Name).ToList(),
+                SalesModels = startup.Salesmodels.Select(sm => sm.Name).ToList(),
+                TargetCountries = startup.Countries.Select(c => c.Name).ToList()
+            };
+        }
+
+        [Authorize(Roles = "Startup")]
+        [HttpGet("me")]
+        public async Task<ActionResult<StartupDetailDto>> GetMyStartup()
+        {
+            var userid = UserId;
+
+            var startup = await _context.Startups
+                .Include(s => s.Country)
+                .Include(s => s.Developmentstage)
+                .Include(s => s.Investmentstage)
+                .Include(s => s.Industries)
+                .Include(s => s.Technologies)
+                .Include(s => s.Businessmodels)
+                .Include(s => s.Salesmodels)
+                .Include(s => s.Countries)
+                .FirstOrDefaultAsync(s => s.Userid == userid);
+
+            if (startup == null) return NotFound("Startup profile not found");
 
             return new StartupDetailDto
             {
@@ -210,7 +253,7 @@ namespace vc.Controllers
                 TargetCountries = createdStartup.Countries.Select(c => c.Name).ToList()
             };
 
-            return CreatedAtAction(nameof(GetStartup), new { publicName = dtoResult.PublicName }, dtoResult);
+            return CreatedAtAction(nameof(GetStartups), new { publicName = dtoResult.PublicName }, dtoResult);
         }
 
 

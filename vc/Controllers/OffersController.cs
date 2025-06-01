@@ -243,7 +243,7 @@ namespace vc.Controllers
                 return BadRequest("Invalid status.");
 
             offer.Status = dto.Status;
-            offer.Updatedat = DateTime.UtcNow;
+            offer.Updatedat = DateTime.Now;
             await _context.SaveChangesAsync();
 
             return Ok("Offer updated.");

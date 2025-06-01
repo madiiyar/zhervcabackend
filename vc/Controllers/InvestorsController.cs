@@ -16,26 +16,39 @@ public class InvestorController : ControllerBase
         _context = context;
     }
 
-    //  Public: Get list of investors (basic info)
+    // Helper property to get the user ID from the "id" claim
+    private int? UserId
+    {
+        get
+        {
+            var claim = User.FindFirst("id");
+            if (claim == null) return null;
+            if (int.TryParse(claim.Value, out var id)) return id;
+            return null;
+        }
+    }
+
+    //  Public: Get list of investors (full details  info)
     [AllowAnonymous]
     [HttpGet]
     public async Task<ActionResult<IEnumerable<InvestorListDto>>> GetInvestors()
     {
         return await _context.Investors
-            .Include(i => i.Country)
-            .Select(i => new InvestorListDto
-            {
-                FullName = i.Fullname,
-                OrganizationName = i.Organizationname,
-                InvestorType = i.Investortype,
-                PublicEmail = i.Publicemail,
-                CountryName = i.Country.Name,
-                ProfilePhotoPath = i.Profilephotopath
-            })
-            .ToListAsync();
+                .Include(i => i.Country)
+                .Select(i => new InvestorListDto
+                {
+                    Id = i.Id,
+                    FullName = i.Fullname,
+                    OrganizationName = i.Organizationname,
+                    InvestorType = i.Investortype,
+                    PublicEmail = i.Publicemail,
+                    CountryName = i.Country.Name,
+                    ProfilePhotoPath = i.Profilephotopath
+                })
+                .ToListAsync();
     }
 
-    // Public: Get detailed investor profile by name (e.g., /api/investor/beelinefund)
+    // ✅ Public: Get detailed investor profile by name (e.g., /api/investor/beelinefund)
     [AllowAnonymous]
     [HttpGet("{publicName}")]
     public async Task<ActionResult<InvestorDetailDto>> GetInvestorDetails(string publicName)
@@ -53,6 +66,7 @@ public class InvestorController : ControllerBase
 
         return new InvestorDetailDto
         {
+            Id=investor.Id,
             FullName = investor.Fullname,
             ContactFullName = investor.Contactfullname,
             PublicEmail = investor.Publicemail,
@@ -73,6 +87,51 @@ public class InvestorController : ControllerBase
             DevelopmentStages = investor.Developmentstages.Select(x => x.Name).ToList()
         };
     }
+
+    [Authorize(Roles = "Investor")]
+    [HttpGet("me")]
+    public async Task<ActionResult<InvestorDetailDto>> GetMyInvestor()
+    {
+        var userIdClaim = User.FindFirst("id");
+        if (userIdClaim == null) return Unauthorized("User ID claim missing");
+
+        var userId = int.Parse(userIdClaim.Value);
+
+        var investor = await _context.Investors
+            .Include(i => i.Country)
+            .Include(i => i.Industries)
+            .Include(i => i.Technologies)
+            .Include(i => i.Innovationmethods)
+            .Include(i => i.Developmentstages)
+            .FirstOrDefaultAsync(i => i.Userid == userId);
+
+        if (investor == null) return NotFound("Investor profile not found");
+
+        return new InvestorDetailDto
+        {
+            Id = investor.Id,
+            FullName = investor.Fullname,
+            ContactFullName = investor.Contactfullname,
+            PublicEmail = investor.Publicemail,
+            PhoneNumber = investor.Phonenumber,
+            CountryName = investor.Country?.Name,
+            Website = investor.Website,
+            OrganizationName = investor.Organizationname,
+            IdentificationNumber = investor.Identificationnumber,
+            Description = investor.Description,
+            InvestmentAmount = investor.Investmentamount,
+            HasStartupPilotExperience = investor.Hasstartuppilotexperience,
+            InvestsInStartups = investor.Investsinstartups,
+            ProfilePhotoPath = investor.Profilephotopath,
+            LogoPath = investor.Logopath,
+            Industries = investor.Industries.Select(x => x.Name).ToList(),
+            Technologies = investor.Technologies.Select(x => x.Name).ToList(),
+            InnovationMethods = investor.Innovationmethods.Select(x => x.Name).ToList(),
+            DevelopmentStages = investor.Developmentstages.Select(x => x.Name).ToList()
+        };
+    }
+
+
 
     // Create investor profile - authenticated user only
     [Authorize(Roles = "Investor")]
@@ -121,6 +180,24 @@ public class InvestorController : ControllerBase
             investor.Profilephotopath = "/uploads/" + uniqueFileName;
         }
 
+        if (dto.Logo != null)
+        {
+            var uploadsDir = Path.Combine("wwwroot", "uploads");
+            if (!Directory.Exists(uploadsDir))
+                Directory.CreateDirectory(uploadsDir);
+
+            var uniqueFileName = Guid.NewGuid() + Path.GetExtension(dto.Logo.FileName);
+            var filePath = Path.Combine(uploadsDir, uniqueFileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await dto.Logo.CopyToAsync(stream);
+            }
+
+            investor.Logopath = "/uploads/" + uniqueFileName;
+        }
+
+
         _context.Investors.Add(investor);
         await _context.SaveChangesAsync();
 
@@ -131,7 +208,7 @@ public class InvestorController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetInvestorDetails), new { publicName = investor.Organizationname }, "Investor profile created.");
+        return CreatedAtAction(nameof(GetInvestors), new { publicName = investor.Organizationname }, "Investor profile created.");
     }
 
     // Update investor profile - authenticated only
@@ -139,11 +216,12 @@ public class InvestorController : ControllerBase
     [HttpPut]
     public async Task<IActionResult> UpdateInvestor([FromForm] InvestorAnketaDto dto)
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        var userIdClaim = User.FindFirst("id");
         if (userIdClaim == null) return Unauthorized("User ID claim missing");
 
         var userId = int.Parse(userIdClaim.Value);
 
+        // Load investor with navigation properties
         var investor = await _context.Investors
             .Include(i => i.Industries)
             .Include(i => i.Technologies)
@@ -151,22 +229,78 @@ public class InvestorController : ControllerBase
             .Include(i => i.Developmentstages)
             .FirstOrDefaultAsync(i => i.Userid == userId);
 
-        if (investor == null) return NotFound();
+        if (investor == null)
+            return NotFound("Investor profile not found");
 
+        // Update scalar fields
+        investor.Fullname = dto.FullName;
         investor.Contactfullname = dto.ContactFullName;
         investor.Publicemail = dto.PublicEmail;
-        // Map other fields similarly...
-        investor.Updatedat = DateTime.UtcNow;
+        investor.Phonenumber = dto.PhoneNumber;
+        investor.Countryid = dto.CountryId;
+        investor.Website = dto.Website;
+        investor.Organizationname = dto.OrganizationName;
+        investor.Investortype = dto.InvestorType;
+        investor.Identificationnumber = dto.IdentificationNumber;
+        investor.Description = dto.Description;
+        investor.Investmentamount = dto.InvestmentAmount;
+        investor.Hasstartuppilotexperience = dto.HasStartupPilotExperience;
+        investor.Investsinstartups = dto.InvestsInStartups;
+        investor.Sourceinfoid = dto.SourceInfoId;
+        investor.Updatedat = DateTime.Now;
 
-        // Clear and re-add many-to-many
+        var uploadsDir = Path.Combine("wwwroot", "uploads");
+        if (!Directory.Exists(uploadsDir))
+            Directory.CreateDirectory(uploadsDir);
+
+        // Handle Profile Photo upload
+        if (dto.ProfilePhoto != null)
+        {
+            var uniqueFileName = Guid.NewGuid() + Path.GetExtension(dto.ProfilePhoto.FileName);
+            var filePath = Path.Combine(uploadsDir, uniqueFileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await dto.ProfilePhoto.CopyToAsync(stream);
+            }
+
+            investor.Profilephotopath = "/uploads/" + uniqueFileName;
+        }
+
+        // Handle Logo upload
+        if (dto.Logo != null)
+        {
+            var uniqueFileName = Guid.NewGuid() + Path.GetExtension(dto.Logo.FileName);
+            var filePath = Path.Combine(uploadsDir, uniqueFileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await dto.Logo.CopyToAsync(stream);
+            }
+
+            investor.Logopath = "/uploads/" + uniqueFileName;
+        }
+
+        // Update many-to-many relations
+
+        // Clear old collections
         investor.Industries.Clear();
+        investor.Technologies.Clear();
+        investor.Innovationmethods.Clear();
+        investor.Developmentstages.Clear();
+
+        // Re-add new relations
         investor.Industries = await _context.Industries.Where(i => dto.IndustryIds.Contains(i.Id)).ToListAsync();
+        investor.Technologies = await _context.Technologies.Where(t => dto.TechnologyIds.Contains(t.Id)).ToListAsync();
+        investor.Innovationmethods = await _context.Innovationmethods.Where(m => dto.InnovationMethodIds.Contains(m.Id)).ToListAsync();
+        investor.Developmentstages = await _context.Developmentstages.Where(d => dto.DevelopmentStageIds.Contains(d.Id)).ToListAsync();
 
-        // Repeat for Technologies, Innovationmethods, Developmentstages...
-
+        // Save changes
         await _context.SaveChangesAsync();
-        return Ok("Profile updated");
+
+        return Ok("Investor profile updated successfully");
     }
+
 
     // Admin: Delete investor
     [Authorize(Roles = "Admin")]
