@@ -146,6 +146,39 @@ namespace vc.Services
         }
 
 
+        public async Task<User?> GetUserByIdAsync(int userId)
+        {
+            return await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        }
+
+        public async Task UpdateUserProfileAsync(int userId, UpdateProfileDto dto)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null) throw new Exception("User not found.");
+
+            user.Fullname = dto.Fullname;
+            user.Phonenumber = dto.Phonenumber;
+            user.Email = dto.Email;
+            user.Updatedat = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task ChangePasswordAsync(int userId, string oldPassword, string newPassword)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null) throw new Exception("User not found.");
+
+            bool validOldPassword = PasswordHasher.Verify(oldPassword, user.Passwordhash);
+            if (!validOldPassword) throw new Exception("Old password is incorrect.");
+
+            user.Passwordhash = PasswordHasher.Hash(newPassword);
+            user.Updatedat = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+        }
+
+
 
     }
 }

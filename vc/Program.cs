@@ -14,13 +14,17 @@ builder.Services.AddDbContext<VcdbContext>(options =>
 // Add CORS policy (allow any origin, or specify allowed origins)
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("LocalDevPolicy", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.WithOrigins("http://localhost:3000")
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowAnyHeader()
+              .AllowCredentials();
     });
 });
+
+
+
 
 builder.Services.AddScoped<EmailService>();
 
@@ -94,7 +98,7 @@ app.UseStaticFiles();
 
 
 // Enable CORS middleware before Authorization
-app.UseCors("AllowAll");
+app.UseCors("LocalDevPolicy");
 
 app.UseHttpsRedirection();
 

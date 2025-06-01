@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using vc.DTOs;
 using vc.Services;
 
@@ -68,6 +69,71 @@ namespace vc.Controllers
             {
                 await _service.ResetPasswordAsync(dto);
                 return Ok("Password has been reset successfully.");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        private int? UserId
+        {
+            get
+            {
+                var claim = User.FindFirst("id");
+                if (claim == null) return null;
+                if (int.TryParse(claim.Value, out var id)) return id;
+                return null;
+            }
+        }
+
+
+        [HttpGet("me")]
+        [Authorize]
+        public async Task<IActionResult> GetProfile()
+        {
+            if (UserId == null) return Unauthorized();
+
+            var user = await _service.GetUserByIdAsync(UserId.Value);
+            if (user == null) return NotFound();
+
+            return Ok(new
+            {
+                user.Fullname,
+                user.Email,
+                user.Phonenumber,
+                user.Role
+            });
+        }
+
+
+        [HttpPut("me")]
+        [Authorize]
+        public async Task<IActionResult> UpdateProfile(UpdateProfileDto dto)
+        {
+            if (UserId == null) return Unauthorized();
+
+            try
+            {
+                await _service.UpdateUserProfileAsync(UserId.Value, dto);
+                return Ok("Profile updated successfully.");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPost("change-password")]
+        [Authorize]
+        public async Task<IActionResult> ChangePassword(ChangePasswordDto dto)
+        {
+            if (UserId == null) return Unauthorized();
+
+            try
+            {
+                await _service.ChangePasswordAsync(UserId.Value, dto.OldPassword, dto.NewPassword);
+                return Ok("Password changed successfully.");
             }
             catch (Exception ex)
             {
