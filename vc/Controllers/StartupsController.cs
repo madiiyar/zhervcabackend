@@ -32,7 +32,7 @@ namespace vc.Controllers
         }
 
 
-        // ✅ GET: Summary list
+        // GET: Summary list
         [AllowAnonymous]
         [HttpGet]
         public async Task<ActionResult<IEnumerable<StartupListDto>>> GetStartups(
@@ -112,7 +112,7 @@ namespace vc.Controllers
         }
 
 
-        // GET: api/startups - public summary list (no user required)
+        // GET: api/startups - public summary list
         [AllowAnonymous]
         [HttpGet("{publicName}")]
         public async Task<ActionResult<StartupDetailDto>> GetStartup(string publicName)

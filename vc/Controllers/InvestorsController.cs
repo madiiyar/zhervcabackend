@@ -42,7 +42,7 @@ public class InvestorController : ControllerBase
             .Include(i => i.Technologies)
             .AsQueryable();
 
-        // Many-to-many AND logic: industries
+        // Many-to-many: industries
         if (industryIds != null && industryIds.Any())
         {
             foreach (var id in industryIds)
@@ -51,7 +51,7 @@ public class InvestorController : ControllerBase
             }
         }
 
-        // Many-to-many AND logic: technologies
+        // Many-to-many: technologies
         if (technologyIds != null && technologyIds.Any())
         {
             foreach (var id in technologyIds)
@@ -60,7 +60,7 @@ public class InvestorController : ControllerBase
             }
         }
 
-        // Single-valued OR logic: investor type
+        // Single-valued: investor type
         if (investorTypes != null && investorTypes.Any())
         {
             query = query.Where(i => investorTypes.Contains(i.Investortype));
@@ -82,7 +82,7 @@ public class InvestorController : ControllerBase
 
 
 
-    // ✅ Public: Get detailed investor profile by name (e.g., /api/investor/beelinefund)
+    //Public: Get detailed investor profile by name
     [AllowAnonymous]
     [HttpGet("{publicName}")]
     public async Task<ActionResult<InvestorDetailDto>> GetInvestorDetails(string publicName)
@@ -167,7 +167,7 @@ public class InvestorController : ControllerBase
 
 
 
-    // Create investor profile - authenticated user only
+    // Create investor profile
     [Authorize(Roles = "Investor")]
     [HttpPost]
     public async Task<IActionResult> CreateInvestor([FromForm] InvestorAnketaDto dto)
@@ -245,7 +245,7 @@ public class InvestorController : ControllerBase
         return CreatedAtAction(nameof(GetInvestorDetails), new { publicName = investor.Organizationname }, "Investor profile created.");
     }
 
-    // Update investor profile - authenticated only
+    // Update investor profile
     [Authorize(Roles = "Investor")]
     [HttpPut]
     public async Task<IActionResult> UpdateInvestor([FromForm] InvestorAnketaDto dto)

@@ -57,7 +57,7 @@ namespace vc.Controllers
             return Ok($"Startup status updated to '{dto.Status}'.");
         }
 
-        // View all users (for auditing)
+        // View all users
         [HttpGet("users")]
         public async Task<IActionResult> GetAllUsers()
         {

@@ -21,7 +21,7 @@ namespace vc.Services
 
             message.Body = new TextPart("plain")
             {
-                Text = $"Your verification code is: {otp}\nThis code is valid for 10 minutes."
+                Text = $"Your verification code is: {otp}\nThis code is valid for 1 minutes."
             };
 
             using var client = new SmtpClient();
