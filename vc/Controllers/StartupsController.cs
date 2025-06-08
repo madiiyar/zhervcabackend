@@ -162,7 +162,7 @@ namespace vc.Controllers
 
         [Authorize(Roles = "Startup")]
         [HttpGet("me")]
-        public async Task<ActionResult<StartupDetailDto>> GetMyStartup()
+        public async Task<ActionResult<StartupMeDto>> GetMyStartup()
         {
             var userid = UserId;
 
@@ -179,8 +179,9 @@ namespace vc.Controllers
 
             if (startup == null) return NotFound("Startup profile not found");
 
-            return new StartupDetailDto
+            return new StartupMeDto
             {
+                Id = startup.Id,
                 PublicName = startup.Publicname,
                 ContactFullName = startup.Contactfullname,
                 PublicEmail = startup.Publicemail,
@@ -192,6 +193,7 @@ namespace vc.Controllers
                 CountryName = startup.Country?.Name,
                 EmployeeCount = startup.Employeecount ?? 0,
                 Description = startup.Description,
+                Status = startup.Status,
                 DevelopmentStage = startup.Developmentstage?.Name,
                 InvestmentStage = startup.Investmentstage?.Name,
                 HasSales = startup.Hassales ?? false,

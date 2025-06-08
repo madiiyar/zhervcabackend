@@ -28,6 +28,8 @@ namespace vc.Controllers
                 .Where(s => s.Status == "Pending")
                 .Select(s => new StartupListDto
                 {
+                    Id = s.Id,
+                    OrganizationName = s.Organizationname,
                     PublicName = s.Publicname,
                     CountryName = s.Country!.Name,
                     DevelopmentStage = s.Developmentstage!.Name,

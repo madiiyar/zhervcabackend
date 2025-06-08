@@ -86,6 +86,43 @@ namespace vc.DTOs
         public List<string> TargetCountries { get; set; }
     }
 
+
+    public class StartupMeDto
+    {
+        // Basic Info
+        public int Id { get; set; }
+        public string PublicName { get; set; }
+        public string ContactFullName { get; set; }
+        public string PublicEmail { get; set; }
+        public string PhoneNumber { get; set; }
+        public string Website { get; set; }
+        public string OrganizationName { get; set; }
+        public string IdentificationNumber { get; set; }
+        public int FoundingYear { get; set; }
+        public string CountryName { get; set; }
+        public int EmployeeCount { get; set; }
+        public string Description { get; set; }
+        public string Status { get; set; }
+
+        // Dropdowns
+        public string DevelopmentStage { get; set; }
+        public string InvestmentStage { get; set; }
+
+        public bool HasSales { get; set; }
+        public bool ActivelyLookingForInvestment { get; set; }
+        public decimal TotalPreviousInvestment { get; set; }
+        public string InvestorList { get; set; }
+        public string LogoPath { get; set; }
+        public string PresentationPath { get; set; }
+
+        // Tags
+        public List<string> Industries { get; set; }
+        public List<string> Technologies { get; set; }
+        public List<string> BusinessModels { get; set; }
+        public List<string> SalesModels { get; set; }
+        public List<string> TargetCountries { get; set; }
+    }
+
     public class UpdateStartupStatusDto
     {
         public string Status { get; set; } = null!; // "Accepted" or "Rejected"

@@ -44,8 +44,15 @@ namespace vc.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginDto dto)
         {
-            var token = await _service.LoginAsync(dto);
-            return Ok(new { Token = token });
+            try
+            {
+                var token = await _service.LoginAsync(dto);
+                return Ok(new { Token = token });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Invalid credentials. {ex.Message}");
+            }
         }
 
         [HttpPost("request-password-reset")]
